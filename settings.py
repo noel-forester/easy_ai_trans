@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QRadioButton, QPushButton, QCheckBox
+    QLineEdit, QRadioButton, QPushButton, QCheckBox, QTextEdit
 )
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
@@ -37,6 +37,12 @@ class SettingsDialog(QDialog):
         layout.addWidget(QLabel("APIキー"))
         self.api_key_input = QLineEdit()
         layout.addWidget(self.api_key_input)
+
+        # プロンプト
+        self.prompt_edit = QTextEdit()
+        self.prompt_edit.setPlainText(config["API"].get("prompt", ""))
+        layout.addWidget(QLabel("プロンプト"))
+        layout.addWidget(self.prompt_edit)
 
         # ホットキー
         layout.addWidget(QLabel("ショートカットキー"))
@@ -81,6 +87,7 @@ class SettingsDialog(QDialog):
 
         self.config["API"]["chatgpt_key"] = self.api_key_input.text()
         self.config["Shortcut"]["hotkey"] = self.hotkey_input.text()
+        self.config["API"]["prompt"] = self.prompt_edit.toPlainText()
 
         if "LOG" not in self.config:
             self.config["LOG"] = {}

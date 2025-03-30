@@ -42,6 +42,7 @@ def encode_image_to_base64(path):
 def translate_image(image_path):
     config = load_config()
     api_key = config["API"]["chatgpt_key"]
+    prompt = config["API"].get("prompt", "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。")
 
     if not api_key:
         raise ValueError("APIキーが設定されていません。設定画面から入力してください。")
@@ -59,7 +60,7 @@ def translate_image(image_path):
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。"},
+                        {"type": "text", "text": prompt},
                         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
                     ],
                 }

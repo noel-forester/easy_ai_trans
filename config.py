@@ -7,7 +7,8 @@ default_config = {
     "API": {
         "provider": "ChatGPT",
         "chatgpt_key": "",
-        "gemini_key": ""
+        "gemini_key": "",
+        "prompt": "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。"
     },
     "Shortcut": {
         "hotkey": "ctrl+alt+t"
