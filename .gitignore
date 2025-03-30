@@ -1,3 +1,8 @@
+# PyInstaller build folders
+dist/
+build/
+__pycache__/
+
+# Config / logs / runtime
 config.ini
 history/
-__pycache__/

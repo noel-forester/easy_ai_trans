@@ -6,6 +6,14 @@ from PIL import Image
 from core import capture_screen
 from settings import SettingsDialog #設定画面
 
+import os
+import sys
+
+def resource_path(relative_path):
+    """PyInstallerでバンドルされたassetsを正しく読むための関数"""
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+
 class TranslationWorker(QThread):
     finished = pyqtSignal(str, float, float)  # 翻訳結果, エンコード時間, API時間
     failed = pyqtSignal(str)
@@ -86,7 +94,8 @@ class OutputOverlay(QWidget):
         self.container.resize(self.size())
 
         # 通知領域アイコン
-        self.tray = QSystemTrayIcon(QIcon("assets/icon.png"), self)
+        icon_path = resource_path("assets/icon.png")
+        self.tray = QSystemTrayIcon(QIcon(icon_path), self)
         self.tray.setToolTip("EasyTrans")
         self.tray.activated.connect(self.on_tray_activated)
 
