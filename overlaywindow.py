@@ -1,10 +1,27 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QSizeGrip, QSystemTrayIcon, QMenu, QAction
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 import sys
 from PIL import Image
 from core import capture_screen
 from settings import SettingsDialog #設定画面
+
+class TranslationWorker(QThread):
+    finished = pyqtSignal(str, float, float)  # 翻訳結果, エンコード時間, API時間
+    failed = pyqtSignal(str)
+
+    def __init__(self, image_path):
+        super().__init__()
+        self.image_path = image_path
+
+    def run(self):
+        try:
+            from core import translate_image
+            result, encode_time, api_time = translate_image(self.image_path)
+            self.finished.emit(result, encode_time, api_time)
+        except Exception as e:
+            self.failed.emit(str(e))
+
 
 class OutputOverlay(QWidget):
     def __init__(self):
@@ -144,19 +161,10 @@ class OutputOverlay(QWidget):
         self.log.append(f"📸 全画面キャプチャ保存: {path}")
         self.log.moveCursor(self.log.textCursor().End)
 
-        self.log.append("🔄 翻訳中...（API応答を待っています）")
-        self.log.moveCursor(self.log.textCursor().End)
+        self.start_translation(path)
 
-        from core import translate_image
-
-        translated, encode_time, api_time = translate_image(path)
-        self.log.append(f"🖼️ エンコード時間: {encode_time:.2f}s")
-        self.log.append(f"🌐 API応答時間: {api_time:.2f}s")
-        self.log.append(f"🗨 翻訳結果:\n{translated}")
-        self.log.moveCursor(self.log.textCursor().End)
 
     def capture_below(self):
-        # ウィンドウのスクリーン上の位置・サイズ
         global_pos = self.mapToGlobal(self.rect().topLeft())
         x = global_pos.x()
         y = global_pos.y()
@@ -170,21 +178,35 @@ class OutputOverlay(QWidget):
         monitor_index = self.get_monitor_index_for_window()
         path = capture_screen(mode="underlay", region=(x, y, w, h), monitor_index=monitor_index)
 
-
         self.show()
         self.log.append(f"🫥 背後領域キャプチャ保存: {path}")
         self.log.moveCursor(self.log.textCursor().End)
+
+        self.start_translation(path)
+
+
         
+    def start_translation(self, image_path):
         self.log.append("🔄 翻訳中...（API応答を待っています）")
         self.log.moveCursor(self.log.textCursor().End)
-        
-        from core import translate_image
 
-        translated, encode_time, api_time = translate_image(path)
+        self.worker = TranslationWorker(image_path)
+        self.worker.finished.connect(self.on_translation_finished)
+        self.worker.failed.connect(self.on_translation_failed)
+        self.worker.start()
+
+    def on_translation_finished(self, result, encode_time, api_time):
         self.log.append(f"🖼️ エンコード時間: {encode_time:.2f}s")
         self.log.append(f"🌐 API応答時間: {api_time:.2f}s")
-        self.log.append(f"🗨 翻訳結果:\n{translated}")
+        self.log.append(f"🗨 翻訳結果:\n{result}")
         self.log.moveCursor(self.log.textCursor().End)
+        self.worker = None
+
+    def on_translation_failed(self, error_msg):
+        self.log.append(f"❌ 翻訳失敗: {error_msg}")
+        self.log.moveCursor(self.log.textCursor().End)
+        self.worker = None
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
