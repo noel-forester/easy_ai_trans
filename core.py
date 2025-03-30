@@ -42,33 +42,37 @@ def encode_image_to_base64(path):
 def translate_image(image_path):
     config = load_config()
     api_key = config["API"]["chatgpt_key"]
+
+    if not api_key:
+        raise ValueError("APIキーが設定されていません。設定画面から入力してください。")
+
     client = OpenAI(api_key=api_key)
 
     t0 = time.time()
     base64_image = encode_image_to_base64(image_path)
     t1 = time.time()
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。"},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
-                ],
-            }
-        ],
-        max_tokens=1000
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。"},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+                    ],
+                }
+            ],
+            max_tokens=1000
+        )
+    except Exception as e:
+        raise RuntimeError(f"APIエラー: {e}")
+
     t2 = time.time()
 
     result = response.choices[0].message.content
 
-#    print(f"🖼️ エンコード時間: {t1 - t0:.2f}s")
-#    print(f"🌐 API応答時間: {t2 - t1:.2f}s")
-
-    # 🔽ここが実行されるように！
     txt_path = image_path.replace(".png", ".txt")
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(result)

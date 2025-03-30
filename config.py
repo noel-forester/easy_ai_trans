@@ -11,6 +11,9 @@ default_config = {
     },
     "Shortcut": {
         "hotkey": "ctrl+alt+t"
+    },
+    "LOG": {
+        "show_timing_logs": "True"
     }
 }
 
@@ -21,6 +24,7 @@ def load_config():
         save_config(config)
     else:
         config.read(CONFIG_PATH, encoding="utf-8")
+        
     return config
 
 def save_config(config):

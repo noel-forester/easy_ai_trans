@@ -5,6 +5,7 @@ import sys
 from PIL import Image
 from core import capture_screen
 from settings import SettingsDialog #設定画面
+from config import load_config 
 
 import os
 import sys
@@ -105,7 +106,7 @@ class OutputOverlay(QWidget):
         quit_action = QAction("終了", self)
 
         show_action.triggered.connect(self.show)
-        settings_action.triggered.connect(self.open_settings)  # あとで実装
+        settings_action.triggered.connect(self.open_settings)
         quit_action.triggered.connect(QApplication.quit)
 
         menu.addAction(show_action)
@@ -137,13 +138,14 @@ class OutputOverlay(QWidget):
     def mouseReleaseEvent(self, event):
         self.offset = None
 
-    def fake_translate(self):
-        self.log.append("▼ 翻訳結果:\nGran: ええと...特にどこでもないよ。")
-        self.log.moveCursor(self.log.textCursor().End)
-
     def open_settings(self):
         dlg = SettingsDialog()
+        dlg.settings_saved.connect(self.on_settings_saved)
         dlg.exec_()
+            
+    def on_settings_saved(self):
+        self.log.append("💾 設定を保存しました")
+        self.log.moveCursor(self.log.textCursor().End)
     
     def get_monitor_index_for_window(self):
         import mss
@@ -205,8 +207,11 @@ class OutputOverlay(QWidget):
         self.worker.start()
 
     def on_translation_finished(self, result, encode_time, api_time):
-        self.log.append(f"🖼️ エンコード時間: {encode_time:.2f}s")
-        self.log.append(f"🌐 API応答時間: {api_time:.2f}s")
+        config = load_config()
+        if config["LOG"].get("show_timing_logs", "True") == "True":
+            self.log.append(f"🖼️ エンコード時間: {encode_time:.2f}s")
+            self.log.append(f"🌐 API応答時間: {api_time:.2f}s")
+
         self.log.append(f"🗨 翻訳結果:\n{result}")
         self.log.moveCursor(self.log.textCursor().End)
         self.worker = None
