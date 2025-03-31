@@ -41,41 +41,72 @@ def encode_image_to_base64(path):
 
 def translate_image(image_path):
     config = load_config()
-    api_key = config["API"]["chatgpt_key"]
+    provider = config["API"].get("provider", "ChatGPT")
     prompt = config["API"].get("prompt", "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。")
-
-    if not api_key:
-        raise ValueError("APIキーが設定されていません。設定画面から入力してください。")
-
-    client = OpenAI(api_key=api_key)
 
     t0 = time.time()
     base64_image = encode_image_to_base64(image_path)
     t1 = time.time()
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
+    results = []
+    api_time_total = 0
+
+    if provider in ("ChatGPT", "Both"):
+        try:
+            chat_model = config["API"].get("chatgpt_model", "gpt-4o")
+            api_key = config["API"].get("chatgpt_key", "")
+            if not api_key:
+                raise ValueError("ChatGPT APIキーが設定されていません。設定画面から入力してください。")
+
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model=chat_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+                        ],
+                    }
+                ],
+                max_tokens=1000
+            )
+            chat_result = response.choices[0].message.content
+            results.append(f"🔵 ChatGPT（{chat_model}）:\n{chat_result}")
+            api_time_total += response.usage.total_tokens / 1000  # 適当な見積もり
+        except Exception as e:
+            results.append(f"❌ ChatGPTエラー: {e}")
+
+    if provider in ("Gemini", "Both"):
+        try:
+            from google.generativeai import configure, GenerativeModel
+            gemini_model = config["API"].get("gemini_model", "models/gemini-1.5-pro")
+            gemini_key = config["API"].get("gemini_key", "")
+            if not gemini_key:
+                raise ValueError("Gemini APIキーが設定されていません。設定画面から入力してください。")
+
+            configure(api_key=gemini_key)
+            model = GenerativeModel(gemini_model)
+            response = model.generate_content([
+                prompt,
                 {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
-                    ],
+                    "mime_type": "image/png",
+                    "data": base64.b64decode(base64_image)
                 }
-            ],
-            max_tokens=1000
-        )
-    except Exception as e:
-        raise RuntimeError(f"APIエラー: {e}")
+            ])
+            gemini_result = response.text
+            results.append(f"🟢 Gemini（{gemini_model}）:\n{gemini_result}")
+        except Exception as e:
+            results.append(f"❌ Geminiエラー: {e}")
 
     t2 = time.time()
+    combined_result = "\n\n".join(results)
 
-    result = response.choices[0].message.content
-
+    # 保存
     txt_path = image_path.replace(".png", ".txt")
     with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(result)
+        f.write(combined_result)
 
-    return result, t1 - t0, t2 - t1
+    return combined_result, t1 - t0, t2 - t1
+

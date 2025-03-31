@@ -8,6 +8,8 @@ default_config = {
         "provider": "ChatGPT",
         "chatgpt_key": "",
         "gemini_key": "",
+        "chatgpt_model": "gpt-4o",
+        "gemini_model": "models/gemini-1.5-pro",
         "prompt": "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。"
     },
     "Shortcut": {

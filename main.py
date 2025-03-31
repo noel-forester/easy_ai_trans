@@ -201,10 +201,18 @@ class OutputOverlay(QWidget):
         self.log.append("🔄 翻訳中...（API応答を待っています）")
         self.log.moveCursor(self.log.textCursor().End)
 
+        config = load_config()  # 設定の再読み込み
+        provider = config["API"].get("provider", "ChatGPT")
+
+        # providerなどをログに出しても良いかも
+        self.log.append(f"🌐 使用モデル: {provider}")
+        self.log.moveCursor(self.log.textCursor().End)
+
         self.worker = TranslationWorker(image_path)
         self.worker.finished.connect(self.on_translation_finished)
         self.worker.failed.connect(self.on_translation_failed)
         self.worker.start()
+
 
     def on_translation_finished(self, result, encode_time, api_time):
         config = load_config()
