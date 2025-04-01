@@ -4,7 +4,7 @@ from PyQt5.QtGui import QIcon
 import sys
 from core import capture_screen
 from settings import SettingsDialog #設定画面
-from config import load_config 
+from config import load_config, save_config
 import os
 
 def resource_path(relative_path):
@@ -34,6 +34,8 @@ class TranslationWorker(QThread):
 class OutputOverlay(QWidget):
     def __init__(self):
         super().__init__()
+        
+        self.config = load_config()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setGeometry(100, 100, 600, 400)
@@ -101,6 +103,9 @@ class OutputOverlay(QWidget):
         self.chatgpt_output = QTextEdit()
         self.gemini_output = QTextEdit()
 
+        self.chatgpt_output.installEventFilter(self)
+        self.gemini_output.installEventFilter(self)
+
         self.gemini_output.setStyleSheet("""
             QTextEdit {
                 background-color: rgba(0, 255, 0, 10);
@@ -127,20 +132,22 @@ class OutputOverlay(QWidget):
         self.tabs.addTab(self.gemini_output, "Gemini")
         self.layout.addWidget(self.tabs)
 
+        self.font_size = int(self.config["UI"].get("font_size", "10"))
+        self.apply_font_size() 
 
 
         # ログ
-        self.log = QTextEdit()
-        self.log.setReadOnly(True)
-        self.log.setStyleSheet("""
-            QTextEdit {
-                color: white;
-                font-family: Consolas;
-                font-size: 10pt;
-                background-color: transparent;
-                border: none;
-            }
-        """)
+        # self.log = QTextEdit()
+        # self.log.setReadOnly(True)
+        # self.log.setStyleSheet("""
+        #     QTextEdit {
+        #         color: white;
+        #         font-family: Consolas;
+        #         font-size: 10pt;
+        #         background-color: transparent;
+        #         border: none;
+        #     }
+        # """)
         #self.layout.addWidget(self.log)
 
         # リサイズつまみ
@@ -162,7 +169,7 @@ class OutputOverlay(QWidget):
 
         show_action.triggered.connect(self.show)
         settings_action.triggered.connect(self.open_settings)
-        quit_action.triggered.connect(QApplication.quit)
+        quit_action.triggered.connect(self.exit_app)
 
         menu.addAction(show_action)
         menu.addAction(settings_action)
@@ -174,7 +181,9 @@ class OutputOverlay(QWidget):
 
         # 移動用
         self.offset = None
+
         
+
     def on_tray_activated(self, reason):
         if reason == QSystemTrayIcon.Trigger:  # ← 左クリック
             self.show()
@@ -202,6 +211,33 @@ class OutputOverlay(QWidget):
         for output in (self.chatgpt_output, self.gemini_output):
             output.append("💾 設定を保存しました")
             output.moveCursor(output.textCursor().End)
+
+    
+    def apply_font_size(self):
+        style = f"""
+            QTextEdit {{
+                color: white;
+                font-family: Consolas;
+                font-size: {self.font_size}pt;
+                background-color: transparent;
+                border: none;
+            }}
+        """
+        self.chatgpt_output.setStyleSheet(style)
+        self.gemini_output.setStyleSheet(style)
+
+    def eventFilter(self, source, event):
+        from PyQt5.QtCore import QEvent
+        if event.type() == QEvent.Wheel and QApplication.keyboardModifiers() == Qt.ControlModifier:
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.font_size += 1
+            else:
+                self.font_size = max(6, self.font_size - 1)
+
+            self.apply_font_size()
+            return True
+        return super().eventFilter(source, event)
     
     def get_monitor_index_for_window(self):
         import mss
@@ -288,6 +324,15 @@ class OutputOverlay(QWidget):
         self.log.append(f"❌ 翻訳失敗: {error_msg}")
         self.log.moveCursor(self.log.textCursor().End)
         self.worker = None
+
+    def exit_app(self):
+        config = load_config()
+        if "UI" not in config:
+            config["UI"] = {}
+        config["UI"]["font_size"] = str(self.font_size)
+        save_config(config)
+
+        QApplication.quit()
 
 
 if __name__ == "__main__":
