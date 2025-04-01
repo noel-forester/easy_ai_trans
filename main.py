@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QSizeGrip, QSystemTrayIcon, QMenu, QAction
+from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QSizeGrip, QSystemTrayIcon, QMenu, QAction, QTabWidget
 from PyQt5.QtCore import Qt, QPoint, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 import sys
@@ -16,20 +16,22 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 class TranslationWorker(QThread):
-    finished = pyqtSignal(str, float, float)  # 翻訳結果, エンコード時間, API時間
+    finished = pyqtSignal(str, float, float, str)  # ← provider追加
     failed = pyqtSignal(str)
 
-    def __init__(self, image_path):
+    def __init__(self, image_path, provider):  # ← provider受け取る
         super().__init__()
         self.image_path = image_path
+        self.provider = provider
 
     def run(self):
         try:
             from core import translate_image
-            result, encode_time, api_time = translate_image(self.image_path)
-            self.finished.emit(result, encode_time, api_time)
+            result, encode_time, api_time = translate_image(self.image_path, self.provider)
+            self.finished.emit(result, encode_time, api_time, self.provider)  # ← provider渡す
         except Exception as e:
             self.failed.emit(str(e))
+
 
 
 class OutputOverlay(QWidget):
@@ -74,6 +76,62 @@ class OutputOverlay(QWidget):
 
         self.layout.addLayout(top_bar)
 
+        # タブ構成
+        self.tabs = QTabWidget()
+        self.tabs.setAutoFillBackground(False)
+        self.tabs.tabBar().setAutoFillBackground(False)
+
+        stacked = self.tabs.findChild(QWidget, None)
+        stacked.setAutoFillBackground(False)
+        stacked.setStyleSheet("background: transparent;")
+
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane {
+                background: transparent;
+                border: none;
+            }
+            QTabBar::tab {
+                background: transparent;
+                color: white;
+                border: none;
+                padding: 5px;
+            }
+            QTabBar::tab:selected {
+                background: rgba(255, 255, 255, 40);
+            }
+        """)
+
+        self.chatgpt_output = QTextEdit()
+        self.gemini_output = QTextEdit()
+
+        self.gemini_output.setStyleSheet("""
+            QTextEdit {
+                background-color: rgba(0, 255, 0, 10);
+                color: white;
+                border: none;
+            }
+        """)
+        self.gemini_output.setAutoFillBackground(False)
+        self.gemini_output.viewport().setAutoFillBackground(False)
+        self.gemini_output.viewport().setStyleSheet("background-color: transparent;")
+
+        self.chatgpt_output.setStyleSheet("""
+            QTextEdit {
+                background-color: rgba(0, 0, 255, 10);
+                color: white;
+                border: none;
+            }
+        """)
+        self.chatgpt_output.setAutoFillBackground(False)
+        self.chatgpt_output.viewport().setAutoFillBackground(False)
+        self.chatgpt_output.viewport().setStyleSheet("background-color: transparent;")
+
+        self.tabs.addTab(self.chatgpt_output, "ChatGPT")
+        self.tabs.addTab(self.gemini_output, "Gemini")
+        self.layout.addWidget(self.tabs)
+
+
+
         # ログ
         self.log = QTextEdit()
         self.log.setReadOnly(True)
@@ -86,7 +144,7 @@ class OutputOverlay(QWidget):
                 border: none;
             }
         """)
-        self.layout.addWidget(self.log)
+        #self.layout.addWidget(self.log)
 
         # リサイズつまみ
         grip = QSizeGrip(self.container)
@@ -198,31 +256,33 @@ class OutputOverlay(QWidget):
 
         
     def start_translation(self, image_path):
-        self.log.append("🔄 翻訳中...（API応答を待っています）")
-        self.log.moveCursor(self.log.textCursor().End)
+        tab_index = self.tabs.currentIndex()
+        provider = "chatgpt" if tab_index == 0 else "gemini"
 
-        config = load_config()  # 設定の再読み込み
-        provider = config["API"].get("provider", "ChatGPT")
+        output = self.chatgpt_output if provider == "chatgpt" else self.gemini_output
+        output.append("🔄 翻訳中...（API応答を待っています）")
 
-        # providerなどをログに出しても良いかも
-        self.log.append(f"🌐 使用モデル: {provider}")
-        self.log.moveCursor(self.log.textCursor().End)
-
-        self.worker = TranslationWorker(image_path)
+        self.worker = TranslationWorker(image_path, provider)
         self.worker.finished.connect(self.on_translation_finished)
         self.worker.failed.connect(self.on_translation_failed)
         self.worker.start()
 
 
-    def on_translation_finished(self, result, encode_time, api_time):
-        config = load_config()
-        if config["LOG"].get("show_timing_logs", "True") == "True":
-            self.log.append(f"🖼️ エンコード時間: {encode_time:.2f}s")
-            self.log.append(f"🌐 API応答時間: {api_time:.2f}s")
-
-        self.log.append(f"🗨 翻訳結果:\n{result}")
-        self.log.moveCursor(self.log.textCursor().End)
+    def on_translation_finished(self, result, encode_time, api_time, provider):
+        if provider == "chatgpt":
+            output = self.chatgpt_output
+        elif provider == "gemini":
+            output = self.gemini_output
+        else:
+            return
+        
+        self.config = load_config()
+        if self.config["LOG"].getboolean("show_timing_logs", True):
+            output.append(f"🖼️ エンコード時間: {encode_time:.2f}s")
+            output.append(f"🌐 API応答時間: {api_time:.2f}s")
+        output.append(f"🗨 翻訳結果:\n{result}")
         self.worker = None
+
 
     def on_translation_failed(self, error_msg):
         self.log.append(f"❌ 翻訳失敗: {error_msg}")
