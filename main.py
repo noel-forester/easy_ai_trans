@@ -1,14 +1,11 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QPushButton, QVBoxLayout, QHBoxLayout, QSizeGrip, QSystemTrayIcon, QMenu, QAction, QTabWidget
-from PyQt5.QtCore import Qt, QPoint, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 import sys
-from PIL import Image
 from core import capture_screen
 from settings import SettingsDialog #設定画面
 from config import load_config 
-
 import os
-import sys
 
 def resource_path(relative_path):
     """PyInstallerでバンドルされたassetsを正しく読むための関数"""
@@ -202,8 +199,9 @@ class OutputOverlay(QWidget):
         dlg.exec_()
             
     def on_settings_saved(self):
-        self.log.append("💾 設定を保存しました")
-        self.log.moveCursor(self.log.textCursor().End)
+        for output in (self.chatgpt_output, self.gemini_output):
+            output.append("💾 設定を保存しました")
+            output.moveCursor(output.textCursor().End)
     
     def get_monitor_index_for_window(self):
         import mss
@@ -227,9 +225,10 @@ class OutputOverlay(QWidget):
         monitor_index = self.get_monitor_index_for_window()
         path = capture_screen(mode="full", monitor_index=monitor_index)
         self.show()
-        self.log.append(f"📸 全画面キャプチャ保存: {path}")
-        self.log.moveCursor(self.log.textCursor().End)
-
+        tab_index = self.tabs.currentIndex()
+        provider = "chatgpt" if tab_index == 0 else "gemini"
+        output = self.chatgpt_output if provider == "chatgpt" else self.gemini_output
+        output.append(f"📸 全画面キャプチャ保存: {path}")
         self.start_translation(path)
 
 
@@ -248,9 +247,10 @@ class OutputOverlay(QWidget):
         path = capture_screen(mode="underlay", region=(x, y, w, h), monitor_index=monitor_index)
 
         self.show()
-        self.log.append(f"🫥 背後領域キャプチャ保存: {path}")
-        self.log.moveCursor(self.log.textCursor().End)
-
+        tab_index = self.tabs.currentIndex()
+        provider = "chatgpt" if tab_index == 0 else "gemini"
+        output = self.chatgpt_output if provider == "chatgpt" else self.gemini_output
+        output.append(f"🫥 背後領域キャプチャ保存: {path}")
         self.start_translation(path)
 
 

@@ -5,7 +5,7 @@ CONFIG_PATH = "config.ini"
 
 default_config = {
     "API": {
-        "provider": "ChatGPT",
+        # "provider": "ChatGPT",
         "chatgpt_key": "",
         "gemini_key": "",
         "chatgpt_model": "gpt-4o",
