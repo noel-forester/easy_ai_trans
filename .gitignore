@@ -6,3 +6,5 @@ __pycache__/
 # Config / logs / runtime
 config.ini
 history/
+
+.vscode

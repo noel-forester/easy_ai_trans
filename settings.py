@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
-    QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
-    QRadioButton, QCheckBox, QComboBox, QTextEdit
+    QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
+    QCheckBox, QComboBox, QTextEdit
 )
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
@@ -22,15 +22,15 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout()
 
         # --- API プロバイダー選択 ---
-        layout.addWidget(QLabel("使用するAPI"))
-        self.chatgpt_radio = QRadioButton("ChatGPT")
-        self.gemini_radio = QRadioButton("Gemini")
-        self.both_radio = QRadioButton("Both")
-        api_layout = QHBoxLayout()
-        api_layout.addWidget(self.chatgpt_radio)
-        api_layout.addWidget(self.gemini_radio)
-        api_layout.addWidget(self.both_radio)
-        layout.addLayout(api_layout)
+        # layout.addWidget(QLabel("使用するAPI"))
+        # self.chatgpt_radio = QRadioButton("ChatGPT")
+        # self.gemini_radio = QRadioButton("Gemini")
+        # self.both_radio = QRadioButton("Both")
+        # api_layout = QHBoxLayout()
+        # api_layout.addWidget(self.chatgpt_radio)
+        # api_layout.addWidget(self.gemini_radio)
+        # api_layout.addWidget(self.both_radio)
+        # layout.addLayout(api_layout)
 
         # --- APIキー ---
         layout.addWidget(QLabel("ChatGPT APIキー"))
@@ -79,9 +79,9 @@ class SettingsDialog(QDialog):
         api = cfg["API"]
 
         # API選択
-        self.chatgpt_radio.setChecked(api.get("provider", "ChatGPT") == "ChatGPT")
-        self.gemini_radio.setChecked(api.get("provider", "") == "Gemini")
-        self.both_radio.setChecked(api.get("provider", "") == "Both")
+        # self.chatgpt_radio.setChecked(api.get("provider", "ChatGPT") == "ChatGPT")
+        # self.gemini_radio.setChecked(api.get("provider", "") == "Gemini")
+        # self.both_radio.setChecked(api.get("provider", "") == "Both")
 
         # APIキーなど
         self.chatgpt_key_input.setText(api.get("chatgpt_key", ""))
@@ -111,12 +111,12 @@ class SettingsDialog(QDialog):
 
     def save_settings(self):
         api = self.config["API"]
-        if self.chatgpt_radio.isChecked():
-            api["provider"] = "ChatGPT"
-        elif self.gemini_radio.isChecked():
-            api["provider"] = "Gemini"
-        else:
-            api["provider"] = "Both"
+        # if self.chatgpt_radio.isChecked():
+        #     api["provider"] = "ChatGPT"
+        # elif self.gemini_radio.isChecked():
+        #     api["provider"] = "Gemini"
+        # else:
+        #     api["provider"] = "Both"
 
         api["chatgpt_key"] = self.chatgpt_key_input.text()
         api["gemini_key"] = self.gemini_key_input.text()

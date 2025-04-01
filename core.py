@@ -1,11 +1,9 @@
-from PIL import ImageGrab
 import mss
 import os
 from PIL import Image
 from datetime import datetime
 import base64
 import time
-import openai
 from openai import OpenAI
 from config import load_config
 
@@ -39,9 +37,9 @@ def encode_image_to_base64(path):
     with open(path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode("utf-8")
 
-def translate_image(image_path):
+def translate_image(image_path, provider):
     config = load_config()
-    provider = config["API"].get("provider", "ChatGPT")
+    #provider = config["API"].get("provider", "ChatGPT")
     prompt = config["API"].get("prompt", "この画像に含まれる英語を日本語に翻訳してください。ゲームテキスト的な文脈を想定してね。")
 
     t0 = time.time()
@@ -51,7 +49,7 @@ def translate_image(image_path):
     results = []
     api_time_total = 0
 
-    if provider in ("ChatGPT", "Both"):
+    if provider in ("chatgpt", "both"):
         try:
             chat_model = config["API"].get("chatgpt_model", "gpt-4o")
             api_key = config["API"].get("chatgpt_key", "")
@@ -78,7 +76,7 @@ def translate_image(image_path):
         except Exception as e:
             results.append(f"❌ ChatGPTエラー: {e}")
 
-    if provider in ("Gemini", "Both"):
+    if provider in ("gemini", "both"):
         try:
             from google.generativeai import configure, GenerativeModel
             gemini_model = config["API"].get("gemini_model", "models/gemini-1.5-pro")
