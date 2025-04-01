@@ -101,7 +101,9 @@ class OutputOverlay(QWidget):
         """)
 
         self.chatgpt_output = QTextEdit()
+        self.chatgpt_output.setReadOnly(True)
         self.gemini_output = QTextEdit()
+        self.gemini_output.setReadOnly(True)
 
         self.chatgpt_output.installEventFilter(self)
         self.gemini_output.installEventFilter(self)
